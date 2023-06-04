@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Index{% endblock %}
+{% block head %}
+  {{ super() }}
+  <script>
+    let utilsInfo = {{ utilsInfo | tojson }};
+  </script>
+{% endblock %}
+{% block content %}
+
+  <div>
+    GRIEviOS directory: {{ grieviosDir }}
+  </div>
+
+  <table x-data="">
+    <tr>
+      <td colspan="3">Required tools</td>
+    </tr>
+    <tr>
+      <td>
+        <img src="{{ url_for('static', path='icons/check-circle.svg') }}" x-bind:alt="utilsInfo.ideviceinstaller.path" x-show="utilsInfo.ideviceinstaller.path != ''">
+        <img src="{{ url_for('static', path='icons/x-circle.svg') }}" alt="ideviceinstaller not found" x-show="utilsInfo.ideviceinstaller.path == ''">
+         ideviceinstaller
+      </td>
+      <td>
+        Handles app installation on devices
+      </td>
+      <td x-text="utilsInfo.ideviceinstaller.path"></td>
+    </tr>
+    <tr>
+      <td colspan="3">Optional Tools:</tdcolsp>
+    </tr>
+    <tr>
+      <td>
+        <img src="{{ url_for('static', path='icons/check-circle.svg') }}" x-bind:alt="utilsInfo.ideviceinfo.path" x-show="utilsInfo.ideviceinstaller.path != ''">
+        <img src="{{ url_for('static', path='icons/x-circle.svg') }}" alt="ideviceinfo not found" x-show="utilsInfo.ideviceinfo.path == ''">
+        ideviceinfo
+      </td>
+      <td>
+        iOS device discovery
+      </td>
+      <td x-text="utilsInfo.ideviceinfo.path"></td>
+    </tr>
+    <tr>
+      <td>
+        <img src="{{ url_for('static', path='icons/check-circle.svg') }}" x-bind:alt="utilsInfo.idevice_id.path" x-show="utilsInfo.ideviceinstaller.path != ''">
+        <img src="{{ url_for('static', path='icons/x-circle.svg') }}" alt="idevice_id not found" x-show="utilsInfo.idevice_id.path == ''">
+        idevice_id
+      </td>
+      <td>
+        iOS device discovery
+      </td>
+      <td x-text="utilsInfo.idevice_id.path"></td>
+    </tr>
+  </table>
+
+{% endblock %}

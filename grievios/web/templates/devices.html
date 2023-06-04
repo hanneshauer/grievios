@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Devices{% endblock %}
+{% block head %}
+  {{ super() }}
+  <script>
+    const initialDevices = {{ devices | tojson }};
+    function addForm() {
+      return {
+        deviceInput: {
+          udid: null,
+          name: null,
+          os: 'iPhone OS',
+          os_version: null
+        },
+        message: '',
+        userModified: false,
+        connectedDevices: [],
+        async getConnectedDevices() {
+          console.log('Getting new devices...');
+          this.connectedDevices = await (await fetch('/api/devices/connected')).json();
+          if (this.connectedDevices.length > 0 && !this.userModified) {
+            this.deviceInput = this.connectedDevices[0];
+            this.userModified = false;
+          }
+          console.log('Getting devices done');
+        }
+      }
+    }
+  </script>
+{% endblock %}
+{% block content %}
+<div x-data="{ devices: initialDevices }">
+  <div x-data="{ showNew: false, modal: false }">
+      <dialog x-bind:open="modal">
+        <article x-data="addForm()" style="min-width: 50vw">
+          <header>
+            Add new device (modal)
+            <a href="#" class="close" @click="modal=false"></a>
+          </header>
+          <div>
+            <div class="grid">
+              <label for="connectedDevices">
+                Connected Devices (<a href="#" @click="getConnectedDevices()">Refresh</a>)
+                <select id="connectedDevices">
+                  <template x-for="device in connectedDevices">
+                    <option value="device" x-text="device.name ? device.name : device.udid"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+
+          <form x-ref="addDeviceForm" @submit.prevent="console.log($event);">
+            <label for="name">
+              Name
+              <input type="text" id="name" name="name" x-model="deviceInput.name" required>
+            </label>
+            <label for="udid">
+              UDID
+              <input type="text" id="udid" name="udid" x-model="deviceInput.udid" placeholder="9f...">
+            </label>
+
+        <div class="grid">
+
+          <label for="os">
+            OS
+            <input type="text" id="os" name="firstname" placeholder="OS" x-model="deviceInput.os" required disabled>
+          </label>
+
+          <label for="os-version">
+            OS Version
+            <input type="text" id="os-version" name="os-version" placeholder="15.1" x-model="deviceInput.os_version" required>
+          </label>
+
+        </div>
+
+      </form>
+    </div>
+
+    <footer>
+      <a href="#" role="button" @click.debounce="
+        fetch('/api/devices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(deviceInput)
+        })
+        .then((res) => {
+          if (!res.ok) {
+            return Promise.reject(res);
+          }
+          devices.push(deviceInput);
+          modal = false;
+          return res.json();
+        })
+        .catch((e) => {
+          e.json().then((msg) => {
+            message = msg.message;
+          })
+        })
+      ">Save</a>
+    </footer>
+  </article>
+      </dialog>
+
+    <div style="text-align: center">
+      <a href="#" @click="modal = true">Add new Device</a>
+    </div>
+    <table x-ref="deviceTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>UDID</th>
+          <th>OS</th>
+          <th>OS Version</th>
+          <th style="text-align: right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="device in devices">
+          <tr>
+            <td x-text="device.name"></td>
+            <td x-text="device.udid"></td>
+            <td x-text="device.os">OS</td>
+            <td x-text="device.os_version">OS Version</td>
+            <td style="text-align: right">
+              <a href="#"
+                @click="
+                if(confirm('Are you sure you want to delete the device ' + device.name + '?')){
+                  fetch('/api/devices/' + device.udid, {method: 'DELETE'})
+                  .then((res) => {
+                    if (res.ok) {
+                      devices = devices.filter(d => d.udid != device.udid);
+                    }
+                  })
+                }
+              ">
+                <img src="{{ url_for('static', path='icons/trash-2.svg') }}" alt="Delete" />
+              </a>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Explorations{% endblock %}
+{% block head %}
+{{ super() }}
+<script type="text/javascript">
+  const initialDevices = {{ devices | tojson }};
+  const initialServers = {{ servers | tojson }};
+  const initialExplorations = {{ explorations | tojson }};
+  const devicesMap = Object.assign({}, ...initialDevices.map(d => ({[d.udid]: d})));
+  const serversMap = Object.assign({}, ...initialServers.map(s => ({[s.id]: s})));
+
+  console.log(initialExplorations);
+
+  initialExplorationInput = () => { return  {
+    appiumServer: initialServers[0].id,
+    device: initialDevices[0].udid,
+    strategies: [],
+    analyzers: [],
+    installedApps: [],
+    localApps: []
+  }};
+  function addForm() {
+    return {
+      explorationInput: initialExplorationInput(),
+      message: '',
+      devices: {{ devices | tojson }},
+      servers: {{ servers | tojson }},
+      strategies: {{ strategies | tojson }},
+      analyzers: {{ analyzers | tojson }},
+      localIpas: {{ localIpas | tojson }}
+    }
+  }
+</script>
+{% endblock %}
+{% block content %}
+<div class="p-5" x-data="{ showNew: false, explorations: initialExplorations }">
+
+  <dialog x-bind:open="showNew">
+    <article x-data="addForm()" style="min-width: 50vw">
+      <header>
+        <a href="#" class="close" @click="showNew = false"></a>
+        Add new Explorations
+      </header>
+
+      <details>
+        <summary>Device & Server</summary>
+        <div class="grid">
+          <div>
+            <select id="device" x-model="explorationInput.device">
+              <template x-for="device in devices">
+                <option :value="device.udid" x-text="device.name"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <select id="server" x-model="explorationInput.appiumServer">
+              <template x-for="server in servers">
+                <option :value="server.id" x-text="server.url + ':' + server.port"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Strategies</summary>
+        <div id="strategies-container" class="m-0">
+          <template x-for="strategy in strategies">
+            <div>
+              <input type="checkbox" :id="`strategy-${strategy}`" :value="strategy" x-model="explorationInput.strategies">
+              <label :for="`strategy-${strategy}`" x-text="strategy"></label>
+            </div>
+          </template>
+        </div>
+      </details>
+      <details>
+        <summary>Analyzers</summary>
+        <template x-for="analyzer in analyzers">
+          <div>
+            <input type="checkbox" :id="`analyzer-${analyzer}`" :value="analyzer" x-model="explorationInput.analyzers">
+            <label :for="`analyzer-${analyzer}`" x-text="analyzer"></label>
+          </div>
+        </template>
+      </details>
+      <details>
+        <summary>Apps</summary>
+          <div id="apps-container" style="overflow: auto; height: 8rem" x-data="{ searchTerm: '' }">
+            <template x-for="ipa in localIpas">
+              <div>
+                <input type="checkbox" :value="ipa.bundle_id" :id="`ipa-local-${ipa.bundle_id}`" x-model="explorationInput.localApps">
+                <label :for="`ipa-local-${ipa.bundle_id}`" x-text="ipa.bundle_name"></label>
+              </div>
+            </template>
+          </div>
+      </details>
+
+      <footer>
+        <a href="#" role="button" class="secondary"
+           @click="
+            console.log(explorationInput);
+            explorationInput = initialExplorationInput();
+            showNew = false;
+            ">
+          Cancel
+        </a>
+        <a href="#" role="button"
+           @click="
+              console.log(explorationInput);
+              fetch('/api/explorations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(explorationInput)
+              })
+              .then((res) => {
+                if (!res.ok) {
+                  return Promise.reject(res);
+                }
+                return res.json();
+              })
+              .then((res) => {
+                explorations = explorations.concat(res);
+                showNew = false;
+              })
+              .catch((e) => {
+                e.json().then((msg) => {
+                  console.log(msg);
+                  console.log(msg.message);
+                })
+              })
+            ">
+          Save
+        </a>
+      </footer>
+    </article>
+  </dialog>
+
+
+  <div style="text-align: center">
+    <a href="#" @click="showNew = true">Add new exploration(s)</a>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Device</th>
+        <th>Appium Server</th>
+        <th>App</th>
+        <th>Strategy</th>
+        <th>Analyzers</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="exploration in explorations">
+        <tr>
+          <td x-text="exploration.device.name"></td>
+          <td x-text="`${exploration.appium_server.url}:${exploration.appium_server.port}`"></td>
+          <td x-text="exploration.bundle_id"></td>
+          <td x-text="exploration.strategy"></td>
+          <td>
+            <ul style="margin-bottom: 0">
+              <template x-for="analyzer in exploration.analyzers">
+                <li x-text="analyzer"></li>
+              </template>
+            </ul>
+          </td>
+          <td x-text="exploration.status"></td>
+          <td>
+            <a href="#" title="Reset" x-show="exploration.status != 'Created'" @click="
+              fetch(`/api/explorations/${exploration.id}/status/reset`, {method: 'PUT'})
+              .then((res) => { if (res.ok) return res.json()} )
+              .then((res) => { explorations.find((exp) => exp.id == exploration.id).status = res.status })
+              ">
+              <img src="{{ url_for('static', path='icons/skip-back.svg') }}" alt="Reset" />
+            </a>
+            <a href="#" title="Delete" @click="
+              if (confirm('Are you sure you want to delete the Exploration?')) {
+                fetch(`/api/explorations/${exploration.id}`, {method: 'DELETE'})
+                .then((res) => {
+                  if(res.ok) {
+                    explorations = explorations.filter(e => e.id != exploration.id);
+                  }
+                })
+              }
+              ">
+              <img src="{{ url_for('static', path='icons/trash-2.svg') }}" alt="Delete" />
+            </a>
+          </td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

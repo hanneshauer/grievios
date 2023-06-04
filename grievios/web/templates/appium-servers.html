@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Appium Servers{% endblock %}
+{% block head %}
+{{ super() }}
+<script type="text/javascript">
+  const initialServers = {{ servers | tojson }};
+</script>
+{% endblock %}
+{% block content %}
+
+<div x-data="{ servers: initialServers, showNew: false }">
+  <dialog x-bind:open="showNew" x-data="{ newServer: { url: '', port: null, wdaBundleId: ''}}">
+    <article style="min-width: 50vw">
+      <header>
+        <a href="#" class="close" @click="showNew = false"></a>
+        Add new Appium Server
+      </header>
+      <div>
+        <form x-ref="addServerForm">
+          <div class="grid">
+            <label for="url">
+              URL
+              <input type="text" id="url" name="url" x-model="newServer.url" placeholder="http://localhost" required>
+            </label>
+            <label for="port">
+              Port
+              <input type="text" id="port" name="port" x-model="newServer.port" placeholder="4723" required>
+            </label>
+          </div>
+          <label for="wdaBundleId">
+            WDA Bundle ID
+            <input type="text" id="wdaBundleId" name="wdaBundleId" x-model="newServer.wdaBundleId" placeholder="com.facebook.WebDriverAgent" required>
+          </label>
+        </form>
+      </div>
+
+      <footer>
+        <a href="#" role="button" @click.debounce="
+          fetch('/api/appium_servers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newServer)
+          })
+          .then((res) => {
+            if (!res.ok) {
+              return Promise.reject(res);
+            }
+            showNew = false;
+            return res.json();
+          })
+          .then((res) => servers.push(res))
+          .catch((e) => console.log(e))
+          ">
+          Save
+        </a>
+      </footer>
+    </article>
+  </dialog>
+
+  <div style="text-align: center">
+    <a href="#" @click="showNew = true">Add new Appium Server</a>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>URL</th>
+        <th>Port</th>
+        <th>WDA Bundle ID</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="server in servers">
+        <tr>
+          <td x-text="server.url"></td>
+          <td x-text="server.port"></td>
+          <td x-text="server.wdaBundleId"></td>
+          <td>
+            <a href="#" @click="
+              if(confirm('Are you sure you want to delete this server?')) {
+                fetch(`/api/appium_servers/${server.id}`, {method: 'DELETE'})
+                .then((res) => {
+                  if (res.status == 200) {
+                    servers = servers.filter(s => s.id != server.id);
+                  };
+                })
+              }
+            ">
+              <img src="{{ url_for('static', path='icons/trash-2.svg') }}" alt="Delete" />
+            </a>
+          </td>
+        </tr>
+      </template>
+
+    </tbody>
+  </table>
+</div>
+{% endblock %}

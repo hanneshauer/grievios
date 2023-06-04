@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	{% block head %}
+	<meta charset="UTF-8">
+  <link rel="stylesheet" href="{{ url_for('static', path='pico.min.css') }}">
+  <script src="{{ url_for('static', path='alpine.min.js') }}" defer></script>
+	<title>{% block title %}{% endblock %} - GRIEviOS</title>
+	{% endblock %}
+</head>
+<body>
+  <main class="container">
+    <nav>
+      <ul>
+        <li><a href="/">GRIEviOS</a></li>
+      </ul>
+      <ul>
+        <li><a href="/explorations">Explorations</a></li>
+        <li><a href="/devices">Devices</a></li>
+        <li><a href="/appium-servers">Appium Servers</a></li>
+      </ul>
+    </nav>
+    <div id="content">{% block content %}{% endblock %}</div>
+  </main>
+</body>
+</html>
