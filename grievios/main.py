@@ -62,7 +62,7 @@ async def root(request: Request):
         path = None
         try:
             path = util.path()
-        except cmdline_utils.cmdline_util.CmdlineUtilUnavailable:
+        except cmdline_utils.cmdline_util.CmdlineUtilUnavailableException:
             pass
         return path
 
